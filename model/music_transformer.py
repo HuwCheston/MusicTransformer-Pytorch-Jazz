@@ -73,7 +73,7 @@ class MusicTransformer(nn.Module):
         self.softmax    = nn.Softmax(dim=-1)
 
     # forward
-    def forward(self, x, mask=True):
+    def forward(self, x, mask=True, **kwargs):
         """
         ----------
         Author: Damon Gwinn
@@ -188,7 +188,7 @@ class DummyDecoder(nn.Module):
     def __init__(self):
         super(DummyDecoder, self).__init__()
 
-    def forward(self, tgt, memory, tgt_mask, memory_mask,tgt_key_padding_mask,memory_key_padding_mask):
+    def forward(self, tgt, memory, tgt_mask, memory_mask,tgt_key_padding_mask,memory_key_padding_mask, **kwargs):
         """
         ----------
         Author: Damon Gwinn

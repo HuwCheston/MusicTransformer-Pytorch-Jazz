@@ -31,7 +31,7 @@ class TransformerEncoderRPR(Module):
         self.num_layers = num_layers
         self.norm = norm
 
-    def forward(self, src, mask=None, src_key_padding_mask=None):
+    def forward(self, src, mask=None, src_key_padding_mask=None, **kwargs):
 
         output = src
 
@@ -71,7 +71,7 @@ class TransformerEncoderLayerRPR(Module):
         self.dropout1 = Dropout(dropout)
         self.dropout2 = Dropout(dropout)
 
-    def forward(self, src, src_mask=None, src_key_padding_mask=None):
+    def forward(self, src, src_mask=None, src_key_padding_mask=None, **kwargs):
         src2 = self.self_attn(src, src, src, attn_mask=src_mask,
                               key_padding_mask=src_key_padding_mask)[0]
         src = src + self.dropout1(src2)
@@ -153,7 +153,7 @@ class MultiheadAttentionRPR(Module):
             xavier_normal_(self.bias_v)
 
     def forward(self, query, key, value, key_padding_mask=None,
-                need_weights=True, attn_mask=None):
+                need_weights=True, attn_mask=None, **kwargs):
 
         if hasattr(self, '_qkv_same_embed_dim') and self._qkv_same_embed_dim is False:
             # return F.multi_head_attention_forward(
