@@ -4,6 +4,8 @@ import csv
 import math
 import matplotlib.pyplot as plt
 
+from utilities.constants import seed_everything, SEED
+
 RESULTS_FILE = "results.csv"
 EPOCH_IDX = 0
 LR_IDX = 1
@@ -288,5 +290,7 @@ def main():
     else:
         graph_results_legacy(args.input_dirs, args.output_dir, args.model_names, args.epoch_start, args.epoch_end)
 
+
 if __name__ == "__main__":
+    seed_everything(SEED)
     main()

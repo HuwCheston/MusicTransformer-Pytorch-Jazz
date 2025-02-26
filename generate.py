@@ -3,8 +3,7 @@ import torch.nn as nn
 import os
 import random
 
-from third_party.midi_processor.processor import decode_midi, encode_midi
-
+from utilities.processor import decode_midi, encode_midi
 from utilities.argument_funcs import parse_generate_args, print_generate_args
 from model.music_transformer import MusicTransformer
 from dataset.e_piano import create_epiano_datasets, compute_epiano_accuracy, process_midi
@@ -88,7 +87,6 @@ def main():
             decode_midi(rand_seq[0].cpu().numpy(), file_path=f_path)
 
 
-
-
 if __name__ == "__main__":
+    seed_everything(SEED)
     main()

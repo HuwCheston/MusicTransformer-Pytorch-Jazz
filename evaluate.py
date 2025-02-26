@@ -55,4 +55,5 @@ def main():
 
 
 if __name__ == "__main__":
+    seed_everything(SEED)
     main()
