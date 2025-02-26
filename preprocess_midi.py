@@ -4,7 +4,7 @@ import pickle
 import json
 import random
 
-import third_party.midi_processor.processor as midi_processor
+import utilities.processor as midi_processor
 
 JSON_FILE = "maestro-v2.0.0.json"
 
@@ -165,9 +165,9 @@ def main():
     ----------
     """
 
-    args            = parse_args()
-    root    = args.root
-    output_dir      = args.output_dir
+    args = parse_args()
+    root = args.root
+    output_dir = args.output_dir
 
     print("Preprocessing midi files and saving to", output_dir)
     if args.custom_dataset:
