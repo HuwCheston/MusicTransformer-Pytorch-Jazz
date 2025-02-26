@@ -1,6 +1,8 @@
 import torch
+import random
+import numpy as np
 
-from third_party.midi_processor.processor import RANGE_NOTE_ON, RANGE_NOTE_OFF, RANGE_VEL, RANGE_TIME_SHIFT
+from .processor import RANGE_NOTE_ON, RANGE_NOTE_OFF, RANGE_VEL, RANGE_TIME_SHIFT
 
 SEPERATOR               = "========================="
 
@@ -26,3 +28,13 @@ TORCH_INT               = torch.int32
 TORCH_LABEL_TYPE        = torch.long
 
 PREPEND_ZEROS_WIDTH     = 4
+
+SEED = 42
+
+
+def seed_everything(seed: int = SEED) -> None:
+    """Sets all random seeds for reproducible results."""
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # safe to call even if cuda is not available
+    random.seed(seed)
+    np.random.seed(seed)
