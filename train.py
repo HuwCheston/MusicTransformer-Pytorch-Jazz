@@ -3,6 +3,7 @@ import csv
 import shutil
 import torch
 import torch.nn as nn
+import mlflow
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torch.optim import Adam
@@ -62,10 +63,10 @@ def main():
     if(args.no_tensorboard):
         tensorboard_summary = None
     else:
-        from torch.utils.tensorboard import SummaryWriter
+        mlflow.set_tracking_uri("http://127.0.0.1:5000")
+        mlflow.set_experiment("music_transformer")
+        mlflow.start_run
 
-        tensorboad_dir = os.path.join(args.output_dir, "tensorboard")
-        tensorboard_summary = SummaryWriter(log_dir=tensorboad_dir)
 
     ##### Datasets #####
     train_dataset, val_dataset, test_dataset = create_epiano_datasets(args.input_dir, args.max_sequence)
@@ -189,14 +190,16 @@ def main():
                 print("Best eval loss epoch:", best_eval_loss_epoch, file=o_stream)
                 print("Best eval loss:", best_eval_loss, file=o_stream)
 
-
         if(not args.no_tensorboard):
-            tensorboard_summary.add_scalar("Avg_CE_loss/train", train_loss, global_step=epoch+1)
-            tensorboard_summary.add_scalar("Avg_CE_loss/eval", eval_loss, global_step=epoch+1)
-            tensorboard_summary.add_scalar("Accuracy/train", train_acc, global_step=epoch+1)
-            tensorboard_summary.add_scalar("Accuracy/eval", eval_acc, global_step=epoch+1)
-            tensorboard_summary.add_scalar("Learn_rate/train", lr, global_step=epoch+1)
-            tensorboard_summary.flush()
+            metrics = dict(
+                train_loss=train_loss,
+                train_acc=train_acc,
+                valid_loss=eval_loss,
+                valid_acc=eval_acc,
+                lr=lr
+            )
+            mlflow.log_metrics(metrics, step=epoch)
+
 
         if((epoch+1) % args.weight_modulus == 0):
             epoch_str = str(epoch+1).zfill(PREPEND_ZEROS_WIDTH)
@@ -209,7 +212,7 @@ def main():
 
     # Sanity check just to make sure everything is gone
     if(not args.no_tensorboard):
-        tensorboard_summary.flush()
+        mlflow.end_run()
 
     return
 
