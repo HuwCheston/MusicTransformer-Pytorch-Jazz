@@ -1,4 +1,5 @@
 import pretty_midi
+import math
 
 RANGE_NOTE_ON = 128
 RANGE_NOTE_OFF = 128
@@ -210,20 +211,22 @@ def encode_midi(file_path):
 
     for inst in mid.instruments:
         inst_notes = inst.notes
-        # ctrl.number is the number of sustain control. If you want to know abour the number type of control,
-        # see https://www.midi.org/specifications-old/item/table-3-control-change-messages-data-bytes-2
-        ctrls = _control_preprocess([ctrl for ctrl in inst.control_changes if ctrl.number == 64])
-        notes += _note_preprocess(ctrls, inst_notes)
+        # We don't care about sustain pedals
+        # ctrls = _control_preprocess([ctrl for ctrl in inst.control_changes if ctrl.number == 64])
+        notes += _note_preprocess(None, inst_notes)
+    assert len(notes) == len(mid.instruments[0].notes)
 
+    # Splits each note into one note_on event, one note_off event
     dnotes = _divide_note(notes)
-
-    # print(dnotes)
     dnotes.sort(key=lambda x: x.time)
-    # print('sorted:')
-    # print(dnotes)
+    assert len(dnotes) == len(notes) * 2
+
     cur_time = 0
     cur_vel = 0
+
+    # Converts notes into tokens
     for snote in dnotes:
+        # TODO: This can possibly drift out of time with the original MIDI
         events += _make_time_sift_events(prev_time=cur_time, post_time=snote.time)
         events += _snote2events(snote=snote, prev_vel=cur_vel)
         # events += _make_time_sift_events(prev_time=cur_time, post_time=snote.time)
@@ -231,7 +234,23 @@ def encode_midi(file_path):
         cur_time = snote.time
         cur_vel = snote.velocity
 
-    return [e.to_int() for e in events]
+    # We'll expect more tokens than we have initial notes
+    tokens = [e.to_int() for e in events]
+    assert len(tokens) > len(dnotes) > len(notes)
+
+    # Print the number of unique event tokens: should be decently high
+    # n_unique = len(set(tokens))
+    # print("Unique tokens: ", n_unique)
+
+    # Decode the tokens back to MIDI and check that the duration is pretty similar
+    decoded = decode_midi(tokens)
+    decoded_end = max(decoded.instruments[0].notes, key=lambda x: x.end).end
+    expected_end = max(mid.instruments[0].notes, key=lambda x: x.end).end
+    #  5 second tolerance between ending times
+    if not math.isclose(decoded_end, expected_end, abs_tol=5.):
+        print(f'Discrepancy between expected end time and decoded end time for file {file_path}!')
+
+    return tokens
 
 
 def decode_midi(idx_array, file_path=None):
@@ -243,7 +262,11 @@ def decode_midi(idx_array, file_path=None):
 
     mid = pretty_midi.PrettyMIDI()
     # if want to change instument, see https://www.midi.org/specifications/item/gm-level-1-sound-set
-    instument = pretty_midi.Instrument(1, False, "Developed By Yang-Kichang")
+    instument = pretty_midi.Instrument(
+        1,
+        False,
+        name="Developed By Yang-Kichang, hacked to pieces by Huw Cheston"
+    )
     instument.notes = note_seq
 
     mid.instruments.append(instument)

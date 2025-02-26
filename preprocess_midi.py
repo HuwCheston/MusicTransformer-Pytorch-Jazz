@@ -1,21 +1,23 @@
 import argparse
 import os
 import pickle
-import json
 import random
+from pathlib import Path
+from tqdm import tqdm
 
 import utilities.processor as midi_processor
+from utilities.constants import seed_everything
 
-JSON_FILE = "maestro-v2.0.0.json"
+TRAIN_SIZE, TEST_SIZE, VALIDATION_SIZE = 0.8, 0.1, 0.1
+
 
 # prep_midi
-def prep_maestro_midi(maestro_root, output_dir):
+def prep_custom_midi(custom_root, output_dir):
     """
     ----------
-    Author: Damon Gwinn
+    Author: Damon Gwinn, modified Huw Cheston
     ----------
-    Pre-processes the maestro dataset, putting processed midi data (train, eval, test) into the
-    given output folder
+    Pre-processes custom data
     ----------
     """
 
@@ -26,114 +28,52 @@ def prep_maestro_midi(maestro_root, output_dir):
     test_dir = os.path.join(output_dir, "test")
     os.makedirs(test_dir, exist_ok=True)
 
-    maestro_json_file = os.path.join(maestro_root, JSON_FILE)
-    if(not os.path.isfile(maestro_json_file)):
-        print("ERROR: Could not find file:", maestro_json_file)
-        return False
+    midi_files = [str(i) for i in Path(custom_root).glob("*.mid")]
+    for f in midi_files:
+        assert os.path.isfile(f)
 
-    maestro_json = json.load(open(maestro_json_file, "r"))
-    print("Found", len(maestro_json), "pieces")
+    print("Found", len(midi_files), "pieces")
     print("Preprocessing...")
 
-    total_count = 0
-    train_count = 0
-    val_count   = 0
-    test_count  = 0
+    total_num_files = len(midi_files)
+    num_files_valid = round(total_num_files * 0.15)
+    num_files_test = round(total_num_files * 0.15)
+    random.shuffle(midi_files)
+    midi_paths_valid = midi_files[:num_files_valid]
+    midi_paths_test = midi_files[num_files_valid:num_files_valid + num_files_test]
+    midi_paths_train = midi_files[num_files_valid + num_files_test:]
 
-    for piece in maestro_json:
-        mid         = os.path.join(maestro_root, piece["midi_filename"])
-        split_type  = piece["split"]
-        f_name      = mid.split("/")[-1] + ".pickle"
+    n_train, n_valid, n_test = 0, 0, 0
 
-        if(split_type == "train"):
-            o_file = os.path.join(train_dir, f_name)
-            train_count += 1
-        elif(split_type == "validation"):
-            o_file = os.path.join(val_dir, f_name)
-            val_count += 1
-        elif(split_type == "test"):
-            o_file = os.path.join(test_dir, f_name)
-            test_count += 1
-        else:
-            print("ERROR: Unrecognized split type:", split_type)
-            return False
+    for files_paths, split_type in (
+            (midi_paths_train, "train"), (midi_paths_valid, "validation"), (midi_paths_test, "test")
+    ):
+        for mid in tqdm(files_paths, desc=split_type):
+            f_name = mid.split("/")[-1] + ".pickle"
 
-        prepped = midi_processor.encode_midi(mid)
+            if split_type == "train":
+                o_file = os.path.join(train_dir, f_name)
+                n_train += 1
+            elif split_type == "validation":
+                o_file = os.path.join(val_dir, f_name)
+                n_valid += 1
+            elif split_type == "test":
+                o_file = os.path.join(test_dir, f_name)
+                n_test += 1
+            else:
+                print("ERROR: Unrecognized split type:", split_type)
+                return False
 
-        o_stream = open(o_file, "wb")
-        pickle.dump(prepped, o_stream)
-        o_stream.close()
+            prepped = midi_processor.encode_midi(mid)
 
-        total_count += 1
-        if(total_count % 50 == 0):
-            print(total_count, "/", len(maestro_json))
+            o_stream = open(o_file, "wb")
+            pickle.dump(prepped, o_stream)
+            o_stream.close()
 
-    print("Num Train:", train_count)
-    print("Num Val:", val_count)
-    print("Num Test:", test_count)
-    return True
+    print("Num Train:", n_train)
+    print("Num Val:", n_valid)
+    print("Num Test:", n_test)
 
-def prep_custom_midi(custom_midi_root, output_dir, valid_p = 0.1, test_p = 0.2):
-    """
-    ----------
-    Author: Corentin Nelias
-    ----------
-    Pre-processes custom midi files that are not part of the maestro dataset, putting processed midi data (train, eval, test) into the
-    given output folder. 
-    ----------
-    """
-    train_dir = os.path.join(output_dir, "train")
-    os.makedirs(train_dir, exist_ok=True)
-    val_dir = os.path.join(output_dir, "val")
-    os.makedirs(val_dir, exist_ok=True)
-    test_dir = os.path.join(output_dir, "test")
-    os.makedirs(test_dir, exist_ok=True)
-    
-    print("Found", len(os.listdir(custom_midi_root)), "pieces")
-    print("Preprocessing custom data...")
-    total_count = 0
-    train_count = 0
-    val_count   = 0
-    test_count  = 0
-    
-    for piece in os.listdir(custom_midi_root):
-        #deciding whether the data should be part of train, valid or test dataset
-        is_train = True if random.random() > valid_p else False
-        if not is_train:
-            is_valid = True if random.random() > test_p else False
-        if is_train:
-            split_type  = "train"
-        elif is_valid:
-            split_type = "validation"
-        else:
-            split_type = "test"
-            
-        mid         = os.path.join(custom_midi_root, piece)
-        f_name      = piece.split(".")[0] + ".pickle"
-
-        if(split_type == "train"):
-            o_file = os.path.join(train_dir, f_name)
-            train_count += 1
-        elif(split_type == "validation"):
-            o_file = os.path.join(val_dir, f_name)
-            val_count += 1
-        elif(split_type == "test"):
-            o_file = os.path.join(test_dir, f_name)
-            test_count += 1
-        
-        prepped = midi_processor.encode_midi(mid)
-
-        o_stream = open(o_file, "wb")
-        pickle.dump(prepped, o_stream)
-        o_stream.close()
-
-        total_count += 1
-        if(total_count % 50 == 0):
-            print(total_count, "/", len(os.listdir(custom_midi_root)))
-
-    print("Num Train:", train_count)
-    print("Num Val:", val_count)
-    print("Num Test:", test_count)
     return True
 
 
@@ -149,9 +89,8 @@ def parse_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("root", type=str, help="Root folder for the Maestro dataset or for custom data.")
+    parser.add_argument("root", type=str, help="Root folder for the custom data.")
     parser.add_argument("-output_dir", type=str, default="./dataset/e_piano", help="Output folder to put the preprocessed midi into.")
-    parser.add_argument("--custom_dataset", action="store_true", help="Whether or not the specified root folder contains custom data.")
 
     return parser.parse_args()
 
@@ -170,12 +109,12 @@ def main():
     output_dir = args.output_dir
 
     print("Preprocessing midi files and saving to", output_dir)
-    if args.custom_dataset:
-        prep_custom_midi(root, output_dir)
-    else:
-        prep_maestro_midi(root, output_dir)
+    prep_custom_midi(root, output_dir)
+
     print("Done!")
     print("")
 
+
 if __name__ == "__main__":
+    seed_everything()
     main()
