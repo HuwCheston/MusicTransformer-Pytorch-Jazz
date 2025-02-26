@@ -1,5 +1,6 @@
 import torch
 import time
+from tqdm import tqdm
 
 from .constants import *
 from utilities.device import get_device
@@ -20,7 +21,7 @@ def train_epoch(cur_epoch, model, dataloader, loss, opt, lr_scheduler=None, prin
 
     out = -1
     model.train()
-    for batch_num, batch in enumerate(dataloader):
+    for batch in tqdm(dataloader, desc="Training batch..."):
         time_before = time.time()
 
         opt.zero_grad()
@@ -44,15 +45,15 @@ def train_epoch(cur_epoch, model, dataloader, loss, opt, lr_scheduler=None, prin
         time_after = time.time()
         time_took = time_after - time_before
 
-        if((batch_num+1) % print_modulus == 0):
-            print(SEPERATOR)
-            print("Epoch", cur_epoch, " Batch", batch_num+1, "/", len(dataloader))
-            print("LR:", get_lr(opt))
-            print("Train loss:", float(out))
-            print("")
-            print("Time (s):", time_took)
-            print(SEPERATOR)
-            print("")
+        # if((batch_num+1) % print_modulus == 0):
+        #     print(SEPERATOR)
+        #     print("Epoch", cur_epoch, " Batch", batch_num+1, "/", len(dataloader))
+        #     print("LR:", get_lr(opt))
+        #     print("Train loss:", float(out))
+        #     print("")
+        #     print("Time (s):", time_took)
+        #     print(SEPERATOR)
+        #     print("")
 
     return
 
@@ -74,7 +75,7 @@ def eval_model(model, dataloader, loss):
         n_test      = len(dataloader)
         sum_loss   = 0.0
         sum_acc    = 0.0
-        for batch in dataloader:
+        for batch in tqdm(dataloader, desc="Evaling batch..."):
             x   = batch[0].to(get_device())
             tgt = batch[1].to(get_device())
 
