@@ -1,3 +1,5 @@
 torch
 numpy
 pretty-midi
+matplotlib
+tqdm
